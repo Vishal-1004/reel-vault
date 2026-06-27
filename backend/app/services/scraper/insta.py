@@ -6,39 +6,28 @@ from dotenv import load_dotenv
 # Load variables from .env file
 load_dotenv()
 
-def fetch_with_alterlab(url: str):
+def fetch_reel_data(reel_url: str):
     """
-    Scrapes Instagram Reels via AlterLab API.
-    
-    Source: https://alterlab.io/
-    Method: POST request to /api/v1/scrape
-    Notes: We use this service to bypass anti-bot protections. 
-           It returns the raw HTML of the provided Instagram URL.
+    Fetches Instagram Reel metadata using the Auto-Download All-In-One API.
+    Source: RapidAPI (auto-download-all-in-one)
     """
-    api_url = "https://api.alterlab.io/api/v1/scrape"
+    url = "https://auto-download-all-in-one.p.rapidapi.com/v1/social/autolink"
     
-    # Securely fetch API key and Session Cookie from environment variables
-    api_key = os.getenv("ALTERLAB_API_KEY")
-    api_session = os.getenv("ALTERLAB_API_SESSION")
-
-    payload = json.dumps({
-        "url": url,
-        "formats": ["html"]
-    })
+    payload = json.dumps({"url": reel_url})
     
     headers = {
-        'X-API-Key': api_key,
+        'x-rapidapi-key': os.getenv("RAPIDAPI_KEY"),
+        'x-rapidapi-host': 'auto-download-all-in-one.p.rapidapi.com',
         'Content-Type': 'application/json',
-        'Cookie': f'api_session={api_session}'
+        'Referer': 'https://reeltoolbox.com/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0'
     }
 
     try:
-        response = requests.post(api_url, headers=headers, data=payload)
-        response.raise_for_status() # Raises an error for 4xx/5xx responses
-        
-        # Depending on AlterLab's response structure, you may need to parse 
-        # the response.json() to get the actual HTML string.
-        return response.text
+        response = requests.post(url, headers=headers, data=payload)
+        response.raise_for_status()
+        # Return the parsed JSON response
+        return response.json()
     except Exception as e:
-        print(f"Error scraping with AlterLab: {e}")
+        print(f"Error fetching from RapidAPI: {e}")
         return None

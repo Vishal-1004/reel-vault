@@ -1,1 +1,1 @@
-from .regex_logic import extract_instagram_meta
+from .json_logic import extract_essential_data

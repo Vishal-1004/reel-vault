@@ -1,1 +1,1 @@
-from .insta import fetch_with_alterlab
+from .insta import fetch_reel_data

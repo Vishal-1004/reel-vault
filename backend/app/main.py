@@ -1,51 +1,40 @@
 import os
 import json
-import asyncio
+from app.services.scraper import fetch_reel_data
+from app.services.parser import extract_essential_data
 
-# Import your services
-from app.services.scraper import fetch_with_alterlab
-from app.services.parser import extract_instagram_meta
-
-async def process_reel(url: str):
-    print(f"Fetching HTML for: {url} using AlterLab...")
+def run_scraper_task(url: str):
+    print(f"Fetching data for: {url}...")
     
-    # 1. Fetch HTML
-    # AlterLab is synchronous, so we just call it directly
-    html_content = fetch_with_alterlab(url)
+    # 1. Fetch raw data from RapidAPI
+    raw_data = fetch_reel_data(url)
     
-    if not html_content:
-        print("❌ Failed to fetch reel from AlterLab.")
+    if not raw_data:
+        print("❌ Failed to fetch data from API.")
         return
         
-    print("✅ Success! HTML retrieved.")
+    print("✅ Successfully fetched data. Parsing essentials...")
 
-    # --- SAVE TO FILE FOR VERIFICATION ---
+    # 2. Parse out only the keys we care about
+    clean_data = extract_essential_data(raw_data)
+    
+    if not clean_data:
+        print("❌ Failed to parse data. API might have returned an error format.")
+        return
+        
+    # 3. Define output path (inside the 'app' directory)
     app_dir = os.path.dirname(os.path.abspath(__file__))
-    output_path = os.path.join(app_dir, "output.html")
+    output_path = os.path.join(app_dir, "output.json")
     
+    # 4. Save the cleanly parsed JSON to the file
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
-    print(f"💾 Raw HTML saved to: {output_path}")
-    # --------------------------------------
-
-    print("🧠 Parsing metadata...")
-    
-    # 2. Parse HTML
-    extracted_data = extract_instagram_meta(html_content)
-    
-    # 3. Format and output
-    final_output = {
-        "status": "success",
-        "data": extracted_data
-    }
-    
-    print("\n--- EXTRACTION RESULT ---")
-    print(json.dumps(final_output, indent=4, ensure_ascii=False))
+        json.dump(clean_data, f, indent=4, ensure_ascii=False)
+        
+    print(f"💾 Successfully saved parsed response to: {output_path}")
+    print("\n--- FINAL PARSED DATA ---")
+    print(json.dumps(clean_data, indent=4, ensure_ascii=False))
 
 if __name__ == "__main__":
     # Test URL
-    test_url = "https://www.instagram.com/reels/DaDCoIkhp6u/"
-    # test_url = "https://www.instagram.com/reels/DaC_92OTA_d/"
-    
-    # We use asyncio.run because you kept process_reel as an async function
-    asyncio.run(process_reel(test_url))
+    test_url = "https://www.instagram.com/reel/DYKQBUwMxT_/"
+    run_scraper_task(test_url)
