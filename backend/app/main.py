@@ -1,25 +1,25 @@
 import os
-import asyncio
 import json
+import asyncio
 
 # Import your services
-from app.services.scraper import fetch_with_rotating_proxy
+from app.services.scraper import fetch_with_alterlab
 from app.services.parser import extract_instagram_meta
 
 async def process_reel(url: str):
-    print(f"Fetching HTML for: {url}...")
+    print(f"Fetching HTML for: {url} using AlterLab...")
     
     # 1. Fetch HTML
-    html_content, proxy_used = await fetch_with_rotating_proxy(url)
+    # AlterLab is synchronous, so we just call it directly
+    html_content = fetch_with_alterlab(url)
     
     if not html_content:
-        print("❌ Failed to fetch reel. All proxies failed.")
+        print("❌ Failed to fetch reel from AlterLab.")
         return
         
-    print(f"✅ Success! Fetched using proxy: {proxy_used}")
+    print("✅ Success! HTML retrieved.")
 
     # --- SAVE TO FILE FOR VERIFICATION ---
-    # This gets the directory of main.py and saves output.html right next to it
     app_dir = os.path.dirname(os.path.abspath(__file__))
     output_path = os.path.join(app_dir, "output.html")
     
@@ -36,7 +36,6 @@ async def process_reel(url: str):
     # 3. Format and output
     final_output = {
         "status": "success",
-        "proxy_used": proxy_used,
         "data": extracted_data
     }
     
@@ -44,5 +43,9 @@ async def process_reel(url: str):
     print(json.dumps(final_output, indent=4, ensure_ascii=False))
 
 if __name__ == "__main__":
-    test_url = "https://www.instagram.com/reels/DaC_92OTA_d/"
+    # Test URL
+    test_url = "https://www.instagram.com/reels/DaDCoIkhp6u/"
+    # test_url = "https://www.instagram.com/reels/DaC_92OTA_d/"
+    
+    # We use asyncio.run because you kept process_reel as an async function
     asyncio.run(process_reel(test_url))

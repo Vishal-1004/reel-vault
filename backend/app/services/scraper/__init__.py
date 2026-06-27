@@ -1,1 +1,1 @@
-from .insta import fetch_with_rotating_proxy
+from .insta import fetch_with_alterlab

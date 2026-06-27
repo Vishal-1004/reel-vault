@@ -1,56 +1,44 @@
 import os
-import random
-import aiohttp
-from aiohttp_socks import ProxyConnector
+import requests
+import json
+from dotenv import load_dotenv
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_PROXY_FILE = os.path.join(CURRENT_DIR, "fastest.txt")
+# Load variables from .env file
+load_dotenv()
 
-async def fetch_with_rotating_proxy(
-    url: str,
-    proxy_file: str = DEFAULT_PROXY_FILE,
-    timeout: int = 10,
-    max_retries: int = 5  # <-- Added max_retries parameter
-):
-    with open(proxy_file, "r", encoding="utf-8") as f:
-        proxies = [
-            line.strip().split("|")[0]
-            for line in f
-            if line.strip()
-        ]
+def fetch_with_alterlab(url: str):
+    """
+    Scrapes Instagram Reels via AlterLab API.
+    
+    Source: https://alterlab.io/
+    Method: POST request to /api/v1/scrape
+    Notes: We use this service to bypass anti-bot protections. 
+           It returns the raw HTML of the provided Instagram URL.
+    """
+    api_url = "https://api.alterlab.io/api/v1/scrape"
+    
+    # Securely fetch API key and Session Cookie from environment variables
+    api_key = os.getenv("ALTERLAB_API_KEY")
+    api_session = os.getenv("ALTERLAB_API_SESSION")
 
-    proxy_pool = proxies.copy()
-    random.shuffle(proxy_pool)
+    payload = json.dumps({
+        "url": url,
+        "formats": ["html"]
+    })
+    
+    headers = {
+        'X-API-Key': api_key,
+        'Content-Type': 'application/json',
+        'Cookie': f'api_session={api_session}'
+    }
 
-    # Use enumerate to keep track of how many attempts we've made
-    for attempt, proxy in enumerate(proxy_pool):
+    try:
+        response = requests.post(api_url, headers=headers, data=payload)
+        response.raise_for_status() # Raises an error for 4xx/5xx responses
         
-        # The Backdoor: If we hit the limit, stop trying and return None
-        if attempt >= max_retries:
-            print(f"⚠️ Reached max retries ({max_retries}). Bailing out early.")
-            break 
-
-        try:
-            connector = ProxyConnector.from_url(proxy)
-            async with aiohttp.ClientSession(
-                connector=connector,
-                timeout=aiohttp.ClientTimeout(total=timeout),
-            ) as session:
-                async with session.get(
-                    url,
-                    headers={
-                        "User-Agent": (
-                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                            "AppleWebKit/537.36 (KHTML, like Gecko) "
-                            "Chrome/137.0.0.0 Safari/537.36"
-                        )
-                    },
-                ) as resp:
-                    if resp.status == 200:
-                        return await resp.text(), proxy
-        except Exception:
-            # If the proxy fails, we just silently continue to the next one
-            continue
-
-    # If the loop finishes (or breaks) without returning HTML, it returns None
-    return None, None
+        # Depending on AlterLab's response structure, you may need to parse 
+        # the response.json() to get the actual HTML string.
+        return response.text
+    except Exception as e:
+        print(f"Error scraping with AlterLab: {e}")
+        return None
